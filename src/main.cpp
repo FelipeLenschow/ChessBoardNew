@@ -330,7 +330,7 @@ int main(void)
 
   while (true)
   {
-    //Sempre();
+    // Sempre();
     Data = SerialReadLock();
     if (Data == 'N' && SerialReadLock() == 'w')
     {                                 // Caso o player seja brancas
@@ -377,13 +377,12 @@ int main(void)
         eval = 10;   // Faz igual a dez
 
       // Ligando os Leds com a cor correspondente da avaliação
-      /*      for (int i = 0; i <= 10; i++)   // Repete para os dez leds de avaliação
-              if (i < eval)                 // Se estiver antes do valor de corte (eval)
-                corCasa(i + 64, 255, 0, 0); // Liga vermelho
-              else                          // Senão
-                corCasa(i + 64, 0, 0, 255); // Liga azul
-                                            // Deixa para atualizar junto com o proximo movimento recebido
-                                            */
+      for (int i = 0; i <= 10; i++)   // Repete para os dez leds de avaliação
+        if (i < eval)                 // Se estiver antes do valor de corte (eval)
+          corCasa(i + 64, 255, 0, 0); // Liga vermelho
+        else                          // Senão
+          corCasa(i + 64, 0, 0, 255); // Liga azul
+                                      // Deixa para atualizar junto com o proximo movimento recebido
     }
   }
 }
