@@ -1,4 +1,4 @@
-//#include <Arduino.h>
+#include <Arduino.h>
 //#include <Print.h>
 //#include <HardwareSerial.h>
 #define F_CPU 16000000UL
@@ -7,7 +7,7 @@
 #include <util/delay.h>
 
 // Valores para calibrar sensibilidade
-#define triggerValue 8     // Se a variação entre a media e a ultima leitura não passar desse valor, o sensor não é considerado ativo
+#define triggerValue 6     // Se a variação entre a media e a ultima leitura não passar desse valor, o sensor não é considerado ativo
 #define divisionValue 8.00 // Define de quantos valores a variavel media vai calcular o valor
 #define sumValue 0         // Valor empirico para fazer a calibragem mais rapida
 
@@ -27,7 +27,7 @@ uint8_t receivePin[4] = {2, 3, 4, 5}; // Pinos que recebem o sinal
 unsigned long total;
 double media[64];
 char Rmove[4], Smove[4], Data = ' ';
-uint8_t sCasa, fCasa, Rselected, value[64], eval, Leds[222];
+uint8_t sCasa, fCasa, Rselected, value[64], eval, Leds[222], MUX;
 
 // Funções para comunicação Serial
 void SerialBegin(unsigned long BAUD)
@@ -123,71 +123,66 @@ void corCasa(uint8_t casa, int red, int green, int blue)
     Leds[casa * 3 + 2] = blue;
   }
 }
+
 void trigger()
 {
-  uint8_t biggest = 0;                        // Zera a variavel que contem o maior valor dos sensores
-  Rselected = 100;                            // Reseta a variavel que guarda o pino de maior valor, sendo 100 para nenhum
-  for (int i = 0; i < 64; i++)                // Varredura por todos os sensores
-    if ((value[i] - media[i]) > triggerValue) // Valor minimo para considerar algum movimento
-      if (biggest < (value[i] - media[i]))    // Teste de maior valor
-      {
-        biggest = (value[i] - media[i]); // Atualizando o maior valor
-        Rselected = i;                   // Salvando o resultado
-      }
+  uint8_t biggest = 0;                                                           // Zera a variavel que contem o maior valor dos sensores
+  Rselected = 100;                                                               // Reseta a variavel que guarda o pino de maior valor, sendo 100 para nenhum
+  for (int i = 0; i < 64; i++)                                                   // Varredura por todos os sensores
+    if ((value[i] - media[i]) > triggerValue && biggest < (value[i] - media[i])) // Valor minimo para considerar algum movimento e teste de maior valor                                                               //
+    {
+      biggest = (value[i] - media[i]); // Atualizando o maior valor
+      Rselected = i;                   // Salvando o resultado
+    }
 }
-/*void Print()
+void Print()
 {
-  for (int i = 0; i < 8; i++)
+  for (int i = 63; i < 64; i++)
   {
     if (value[i] < 1500 && value[i] > -100)
-      Serial.print(value[i] - media[i]);
+    {
+      Serial.print(value[i]);
+      Serial.print(" ");
+      Serial.print(media[i]);
+    }
     Serial.print(" ");
     // Serial.print(media[i]);
     // Serial.print(" ");
   }
   Serial.println("");
-}*/
-
-// Funções para ler os sensores capacitivos
-void SenseOneCycle(uint8_t MUX)
-{
-  clr_bit(PORTD, sendPin);         // Send LOW
-  clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
-  clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
-  set_bit(DDRD, receivePin[MUX]);  // Receive OUTPUT
-  clr_bit(PORTD, receivePin[MUX]); // Receive LOW
-  _delay_us(10);                   // Espera 10ms
-  clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
-  clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
-  set_bit(PORTD, sendPin);         // Send HIGH
-
-  while (!tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está LOW
-    total++;
-
-  set_bit(PORTD, receivePin[MUX]); // Receive HIGH
-  set_bit(DDRD, receivePin[MUX]);  // Receive OUTPUT
-  set_bit(PORTD, receivePin[MUX]); // Receive HIGH
-  clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
-  clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
-  clr_bit(PORTD, sendPin);         // Send LOW
-
-  while (tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está HIGH
-    total++;
-
-  set_bit(PORTD, sendPin); // Send HIGH
 }
+
 long ReadCapacitiveSensor(uint8_t samples, uint8_t MUX)
 {
   total = 0;                            // Zera a variavel que salva o resultado
   for (uint8_t i = 0; i < samples; i++) // Faz "sample" leituras, somando tudo em total
-    SenseOneCycle(MUX);                 // Chama a função principal
-  return (total);                       // retorna o valor
+  {                                     // Faz a leitura do sensor
+    set_bit(DDRD, receivePin[MUX]);     // Receive OUTPUT
+    clr_bit(PORTD, receivePin[MUX]);    // Receive LOW
+    _delay_us(10);                      // Espera 10ms
+    clr_bit(DDRD, receivePin[MUX]);     // Receive INPUT
+    clr_bit(PORTD, receivePin[MUX]);    // Receive PULLUP desligados
+    set_bit(PORTD, sendPin);            // Send HIGH
+
+    while (!tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está LOW
+      total++;
+
+    set_bit(DDRD, receivePin[MUX]);  // Receive OUTPUT
+    set_bit(PORTD, receivePin[MUX]); // Receive HIGH
+    //_delay_us(10);                   // Espera 10ms
+    clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
+    clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
+    clr_bit(PORTD, sendPin);         // Send LOW
+
+    while (tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está HIGH
+      total++;
+  }
+  return (total); // retorna o valor
 }
 void ReadAll()
 {
   for (uint8_t casa = 0; casa < 64; casa++)
   {
-
     //  Liga o MUX daquela casa
     if (!tst_bit(casa, 5) && !tst_bit(casa, 4))     // "Abrindo" binario, 00 liga a porta 4
       PORTC = 0b11100000 + casa % 16;               // Salvando no PORTC a casa escolhida
@@ -198,12 +193,38 @@ void ReadAll()
     else if (tst_bit(casa, 5) && tst_bit(casa, 4))  // "Abrindo" binario, 11 liga a porta 7
       PORTC = 0b01110000 + casa % 16;               // Salvando no PORTC a casa escolhida
 
+    MUX = casa / 16; // Seleciona a casa co mux
+    total = 0;       // Zera a variavel que salva o resultado
+
+    for (uint8_t i = 0; i < 10; i++)    // Faz "sample" leituras, somando tudo em total
+    {                                  // Faz a leitura do sensor
+      set_bit(DDRD, receivePin[MUX]);  // Receive OUTPUT
+      clr_bit(PORTD, receivePin[MUX]); // Receive LOW
+      _delay_us(10);                   // Espera 10ms
+      clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
+      clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
+      set_bit(PORTD, sendPin);         // Send HIGH
+
+      while (!tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está LOW
+        total++;
+
+      set_bit(DDRD, receivePin[MUX]);  // Receive OUTPUT
+      set_bit(PORTD, receivePin[MUX]); // Receive HIGH
+      _delay_us(10);                   // Espera 10ms
+      clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
+      clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
+      clr_bit(PORTD, sendPin);         // Send LOW
+
+      while (tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está HIGH
+        total++;
+    }
+
     // Faz a leitura e salva uma media dos ultimos valores
-    value[casa] += (ReadCapacitiveSensor(10, casa / 16) - value[casa]) / 1.50; // Somando parte da leitura atual na variavel que guarda o valor, para deixar a curva mais suave
-    media[casa] += (value[casa] - media[casa]) / divisionValue;                // Media dos ultimos valores lidos, para deixar as leituras completamente lineares
+    value[casa] += (total - value[casa]) / 1.50;          // Somando parte da leitura atual na variavel que guarda o valor, para deixar a curva mais suave
+    media[casa] += (value[casa] - media[casa]) / divisionValue; // Media dos ultimos valores lidos, para deixar as leituras completamente lineares
   }
   trigger(); // Testa para ver se algum sensor pode ser considerado ativado
-
+  // Print();
   /*
     for (uint8_t casa = 0; casa < 64; casa++)
       if (casa != Rselected)
@@ -230,6 +251,7 @@ void Calibragem()
       // Salva a ultima leitura para ser usada como valor inicial
       value[casa] = ReadCapacitiveSensor(10, casa / 16); // Pedindo 10 leituras do MUX casa/16 - (0, 1, 2 ou 3)
       media[casa] = (value[casa]) + sumValue;            // A media é coletada da ultima leitura e somada de 4 para evitar erro no inicio que ainda é instavel
+      // Print();
     }
   }
   for (int i = 0; i < 5; i++)
@@ -285,12 +307,12 @@ void gotMoved()
   corCasa(sCasa, 0, 0, 0);     // Acende o led da casa
   LedShow();                   // Grava a cor no led
 
-  for (int i = 0; i < 5; i++) // Calibragem rapida
-    ReadAll();                // Le os sensores
-  while (Rselected != fCasa)  // Espera até que seja lido uma casa
-    ReadAll();                // Le os sensores
-  corCasa(fCasa, 0, 0, 0);    // Acende o led da casa
-  LedShow();                  // Grava a cor no led
+  for (int i = 0; i < 15; i++) // Calibragem rapida
+    ReadAll();                 // Le os sensores
+  while (Rselected != fCasa)   // Espera até que seja lido uma casa
+    ReadAll();                 // Le os sensores
+  corCasa(fCasa, 0, 0, 0);     // Acende o led da casa
+  LedShow();                   // Grava a cor no led
 }
 
 // DELETAR DEPOIS - apenas para testes
@@ -330,7 +352,7 @@ int main(void)
 
   while (true)
   {
-    // Sempre();
+    //Sempre();
     Data = SerialReadLock();
     if (Data == 'N' && SerialReadLock() == 'w')
     {                                 // Caso o player seja brancas
