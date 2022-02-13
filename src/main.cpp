@@ -1,4 +1,4 @@
-// #include<Arduino.h>
+#include <Arduino.h>
 //#include <Print.h>
 //#include <HardwareSerial.h>
 #define F_CPU 16000000UL
@@ -33,35 +33,24 @@ bool pColor;
 // Funções para comunicação Serial
 void SerialBegin(unsigned long BAUD)
 {
-  unsigned int ubrr0 = F_CPU / 16 / BAUD - 1;
-  UBRR0H = (unsigned char)(ubrr0 >> 8); // Ajusta a taxa de transmissão
-  UBRR0L = (unsigned char)ubrr0;
-  UCSR0A = 0;                             // desabilitar velocidade dupla (no Arduino é habilitado por padrão)
-  UCSR0B = (1 << RXEN0) | (1 << TXEN0);   // Habilita a transmissão e a recepção
-  UCSR0C = (1 << UCSZ01) | (1 << UCSZ00); // modo assíncrono, 8 bits de dados, 1 bit de parada, sem paridade
+  unsigned int ubrr0 = F_CPU / 16 / BAUD - 1; // Calculo do valor ubrr0 de 11bits
+  UBRR0H = (unsigned char)(ubrr0 >> 8);       // Ajusta a taxa de transmissão
+  UBRR0L = (unsigned char)ubrr0;              //
+  UCSR0A = 0;                                 // Desabilitar velocidade dupla (no Arduino é habilitado por padrão)
+  UCSR0B = (1 << RXEN0) | (1 << TXEN0);       // Habilita a transmissão e a recepção
+  UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);     // Dodo assíncrono, 8 bits de dados, 1 bit de parada, sem paridade
 }
 void SerialWrite(unsigned char dado)
 {
-  while (!(UCSR0A & (1 << UDRE0)))
-    ;          // espera o transmissor estar pronto p/ enviar
-  UDR0 = dado; // envia o dado
+  while (!(UCSR0A & (1 << UDRE0))) // Espera o transmissor estar pronto p/ enviar
+    ;                              //
+  UDR0 = dado;                     // Envia o dado
 }
 unsigned char SerialRead()
 {
-  if (tst_bit(UCSR0A, RXC0)) // Se tiver dado para ser recebido
-    return UDR0;             // Retorna o dado recebido
-  else                       // Senão
-    return ' ';              // Limpa a variavel
-  /*
-  while (!(UCSR0A & (1 << RXC0)))
-    ;          // espera o dado ser recebido
-  return UDR0; // retorna o dado recebido*/
-}
-unsigned char SerialReadLock()
-{
-  while (!(UCSR0A & (1 << RXC0)))
-    ;          // espera o dado ser recebido
-  return UDR0; // retorna o dado recebido
+  while (!(UCSR0A & (1 << RXC0))) // Espera o dado ser recebido
+    ;                             //
+  return UDR0;                    // Eetorna o dado recebido
 }
 
 // Funções para controle dos Leds
@@ -69,8 +58,6 @@ void setLed()
 {                             // Manda um bit 1 para o led
   set_bit(PORTB, led_WS2812); // LedPin HIGH
   NOP;                        // Espera 312.5ns
-  NOP;
-  NOP;
   NOP;
   NOP;
   NOP;
@@ -90,8 +77,6 @@ void clearLed()
   NOP;
   NOP;
   NOP;
-  NOP;
-  NOP;
 }
 void LedShow()
 {                               // Envia para o led todos os bits de todos os leds
@@ -101,7 +86,7 @@ void LedShow()
         setLed();               // Manda bit 1
       else                      // Senão
         clearLed();             // Manda bit 0
-  _delay_ms(10);
+  _delay_ms(1);                 // Espera 1ms por segurança
 }
 void corCasa(uint8_t casa, int red, int green, int blue)
 {
@@ -136,36 +121,36 @@ void trigger()
   Rselected = 100;                                                               // Reseta a variavel que guarda o pino de maior valor, sendo 100 para nenhum
   for (int i = 0; i < 64; i++)                                                   // Varredura por todos os sensores
     if ((value[i] - media[i]) > triggerValue && biggest < (value[i] - media[i])) // Valor minimo para considerar algum movimento e teste de maior valor                                                               //
-    {
-      biggest = (value[i] - media[i]); // Atualizando o maior valor
-      Rselected = i;                   // Salvando o resultado
+    {                                                                            //
+      biggest = (value[i] - media[i]);                                           // Atualizando o maior valor
+      Rselected = i;                                                             // Salvando o resultado
     }
 }
 long ReadCapacitiveSensor(uint8_t samples, uint8_t MUX)
 {
-  total = 0;
-
-  for (uint8_t i = 0; i < samples; i++) // Faz "sample" leituras, somando tudo em total
-  {                                     // Faz a leitura do sensor
-    set_bit(DDRD, receivePin[MUX]);     // Receive OUTPUT
-    clr_bit(PORTD, receivePin[MUX]);    // Receive LOW
-    _delay_us(3);                       // Espera 10ms
-    clr_bit(DDRD, receivePin[MUX]);     // Receive INPUT
-    clr_bit(PORTD, receivePin[MUX]);    // Receive PULLUP desligados
-    set_bit(PORTD, sendPin);            // Send HIGH
-
+  total = 0;                                // Zera a variavel que conterá o valor
+                                            //
+  for (uint8_t i = 0; i < samples; i++)     // Faz "sample" leituras, somando tudo em total
+  {                                         // Faz a leitura do sensor
+    set_bit(DDRD, receivePin[MUX]);         // Receive OUTPUT
+    clr_bit(PORTD, receivePin[MUX]);        // Receive LOW
+    _delay_us(3);                           // Espera 10ms
+    clr_bit(DDRD, receivePin[MUX]);         // Receive INPUT
+    clr_bit(PORTD, receivePin[MUX]);        // Receive PULLUP desligados
+    set_bit(PORTD, sendPin);                // Send HIGH
+                                            //
     while (!tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está LOW
-      total++;
-
-    set_bit(DDRD, receivePin[MUX]);  // Receive OUTPUT
-    set_bit(PORTD, receivePin[MUX]); // Receive HIGH
-    _delay_us(3);                    // Espera 10ms
-    clr_bit(DDRD, receivePin[MUX]);  // Receive INPUT
-    clr_bit(PORTD, receivePin[MUX]); // Receive PULLUP desligados
-    clr_bit(PORTD, sendPin);         // Send LOW
-
-    while (tst_bit(PIND, receivePin[MUX])) // Enquanto Receive está HIGH
-      total++;
+      total++;                              // Incrementa o valor
+                                            //
+    set_bit(DDRD, receivePin[MUX]);         // Receive OUTPUT
+    set_bit(PORTD, receivePin[MUX]);        // Receive HIGH
+    _delay_us(3);                           // Espera 10ms
+    clr_bit(DDRD, receivePin[MUX]);         // Receive INPUT
+    clr_bit(PORTD, receivePin[MUX]);        // Receive PULLUP desligados
+    clr_bit(PORTD, sendPin);                // Send LOW
+                                            //
+    while (tst_bit(PIND, receivePin[MUX]))  // Enquanto Receive está HIGH
+      total++;                              // Incrementa o valo
   }
 
   return total;
@@ -173,8 +158,7 @@ long ReadCapacitiveSensor(uint8_t samples, uint8_t MUX)
 void ReadAll()
 {
   for (uint8_t casa = 0; casa < 64; casa++)
-  {
-    //  Liga o MUX daquela casa
+  {                                                 //  Liga o MUX daquela casa
     if (!tst_bit(casa, 5) && !tst_bit(casa, 4))     // "Abrindo" binario, 00 liga a porta 4
       PORTC = 0b11100000 + casa % 16;               // Salvando no PORTC a casa escolhida
     else if (!tst_bit(casa, 5) && tst_bit(casa, 4)) // "Abrindo" binario, 01 liga a porta 5
@@ -186,9 +170,9 @@ void ReadAll()
 
     // Faz a leitura e salva uma media dos ultimos valores
     value[casa] += (ReadCapacitiveSensor(10, casa / 16) - value[casa]) / 1.50; // Somando parte da leitura atual na variavel que guarda o valor, para deixar a curva mais suave
-    media[casa] += (value[casa] - media[casa]) / divisionValue;                // Media dos ultimos valores lidos, para deixar as leituras completamente lineares
+    media[casa] += (value[casa] - media[casa]) / divisionValue;                // Media dos ultimos valores lidos, para deixar as leituras lineares
   }
-  trigger(); // Testa para ver se algum sensor pode ser considerado ativado
+  trigger(); // Testa para ver se algum sensor pode ser considerado ativado, se sim, escolhe o maior
 }
 
 // Funções para identificar movimentação
@@ -197,58 +181,79 @@ void getMove()
   // Pega o movimento e converte para enviar
   uint8_t start;
   // Os numeros 49 e 97 utilizados adiante são devido a posição do numero '1' e da letra 'a' na tabela ASCII
-  // E as multiplicações por 8 são devido as 8 casas pór linha no tabuleiro
+  // E as multiplicações por 8 são devido as 8 casas por linha no tabuleiro
 
-  while (Rselected == 100 || Rselected == fCasa) // Espera até que seja lido uma casa
-    ReadAll();                                   // Le os sensores
-  Smove[0] = Rselected % 8 + 97;                 // Converte do numero da casa para coordenadas do xadrex
-  Smove[1] = Rselected / 8 + 49;                 // E salva em char
-  corCasa(Rselected, 0, 255, 0);                 // Acende o led da casa
-  LedShow();                                     // Grava a cor no led
-  start = Rselected;                             // Para evitar de uma peça ser movida para a casa que ja está
-
-  while (Rselected == start)
-    ReadAll(); // Le os sensores
-
-  while (Rselected == 100)       // Espera até que seja lido uma casa
-    ReadAll();                   // Le os sensores
-  Smove[2] = Rselected % 8 + 97; // Converte do numero da casa para coordenadas do xadrex
-  Smove[3] = Rselected / 8 + 49; // E salva em char
-  if (pColor)
-    corCasa(Rselected, 150, 0, 0);
-  else
-    corCasa(Rselected, 0, 0, 150); // Acende o led da casa
-  corCasa(start, 0, 0, 0);
-  LedShow(); // Grava a cor no led
-
-  if (Rselected == start)
-  {
-    while (Rselected == start) // Espera até que seja lido uma casa
-      ReadAll();
-    getMove();
+  while (Rselected == 100 || Rselected == fCasa)            // Espera até que seja lido uma casa
+    ReadAll();                                              // Le os sensores
+                                                            // Salva a cor do led antes do movimento
+  uint8_t startR, startG, startB;                           // Declara variaveis para salvar a cor ca casa escolhida
+  if (start / 8 % 2)                                        // Se se for uma linha impar
+  {                                                         //
+    int AUX = (63 - start) * 3;                             // Conversão
+    startG = Leds[AUX];                                     // Salvando a cor do led na sua variavel
+    startR = Leds[AUX + 1];                                 //
+    startB = Leds[AUX + 2];                                 //
+  }                                                         //
+  else                                                      // Se for uma linha par
+  {                                                         //
+    int AUX = (64 - ((start / 8 + 1) * 8) + start % 8) * 3; // Conversão
+    startG = Leds[AUX];                                     // Salvando a cor do led na sua variavel
+    startR = Leds[AUX + 1];                                 //
+    startB = Leds[AUX + 2];                                 //
+  }                                                         //
+                                                            //
+  Smove[0] = Rselected % 8 + 97;                            // Converte do numero da casa para coordenadas do xadrex
+  Smove[1] = Rselected / 8 + 49;                            // E salva em char
+  corCasa(Rselected, 0, 255, 0);                            // Acende o led da casa
+  LedShow();                                                // Grava a cor no led
+  start = Rselected;                                        // Para evitar de uma peça ser movida para a casa que ja está
+                                                            //
+  while (Rselected == start)                                // Verifica a retirada a peça do lugar
+    ReadAll();                                              // Le os sensores
+                                                            //
+  while (Rselected == 100)                                  // Espera até que seja lido uma casa
+    ReadAll();                                              // Le os sensores
+  Smove[2] = Rselected % 8 + 97;                            // Converte do numero da casa para coordenadas do xadrex
+  Smove[3] = Rselected / 8 + 49;                            // E salva em char
+  if (pColor)                                               // Se for brancas
+    corCasa(Rselected, 150, 0, 0);                          // Acende a cor vermelha na nova casa da peça
+  else                                                      // Senão
+    corCasa(Rselected, 0, 0, 150);                          // Acende a cor azul
+                                                            //
+  if (Rselected == start)                                   // Se a casa de inicio e a de destino da peça for a mesma, o usuario
+  {                                                         // cancelou o movimento e ele deve ser repetido
+    corCasa(start, startR, startG, startB);                 // Acende a antiga casa da peça
+    LedShow();                                              // Grava a cor no led
+    while (Rselected == start)                              // Espera enquanto a peça esta sendo manipulada
+      ReadAll();                                            // Le os sensores
+    getMove();                                              // Retorna para o inicio dessa função
+  }                                                         //
+  else                                                      // Senão
+  {                                                         //
+    corCasa(start, 0, 0, 0);                                // Apaga a antiga casa da peça
+    LedShow();                                              // Grava a cor no led
   }
 }
 void gotMoved()
 {
 
-  // Converte coordenada do xadrex recebida usando Serial para Numero da casa
-  sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97;
-  fCasa = (Rmove[3] - 49) * 8 + Rmove[2] - 97;
+  sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97; // Converte coordenada do xadrex recebida usando Serial para Numero da casa
+  fCasa = (Rmove[3] - 49) * 8 + Rmove[2] - 97; // E salva numa variavel char
 
   // Confere se a casa recebida foi movida
   for (int i = 0; i < 10; i++) // Calibragem rapida
     ReadAll();                 // Le os sensores
-  while (Rselected != sCasa)   // Espera até que seja lido uma casa
+  while (Rselected != sCasa)   // Espera até que seja lida a casa requerida
     ReadAll();                 // Le os sensores
-  corCasa(sCasa, 0, 0, 0);     // Acende o led da casa
-  LedShow();                   // Grava a cor no led
-
-  while (Rselected != fCasa) // Espera até que seja lido uma casa
-    ReadAll();               // Le os sensores
-  if (pColor)
-    corCasa(fCasa, 0, 0, 150);
-  else
-    corCasa(fCasa, 150, 0, 0); // Acende o led da casa
+  corCasa(sCasa, 0, 0, 0);     // Apaga o led da casa
+  LedShow();                   // Grava os leds
+                               //
+  while (Rselected != fCasa)   // Espera até que seja lida a casa requerida
+    ReadAll();                 // Le os sensores
+  if (pColor)                  // Se for brancas
+    corCasa(fCasa, 0, 0, 150); // Acende a cor vermelha na nova casa da peça
+  else                         // Senão
+    corCasa(fCasa, 150, 0, 0); // Acende a cor azul
   LedShow();                   // Grava a cor no led
 }
 
@@ -274,74 +279,84 @@ void Sempre()
 
 int main(void)
 {
-  DDRB = 0b00100000;  // led output
-  PORTB = 0b00000000; // led low
-
-  DDRC = 0b11111111;  // S0..S3 e EN0..EN3 output
-  PORTC = 0b00000000; // S0..S3 e EN0..EN3 low
-
-  DDRD = 0b10000000;  // send output, receives input
-  PORTD = 0b00000000; // send pin low
-
-  SerialBegin(9600);           // Inicia o Serial, com baud de 9600
+  DDRB = 0b00100000;           // led OUTPUT
+  PORTB = 0b00000000;          // led LOW
+                               //
+  DDRC = 0b11111111;           // S0..S3 e EN0..EN3 output
+  PORTC = 0b00000000;          // S0..S3 e EN0..EN3 low
+                               //
+  DDRD = 0b10000000;           // send output, receives input
+  PORTD = 0b00000000;          // send pin low
+                               //
+  SerialBegin(9600);           // Inicia o Serial, com baud rate de 9600
   LedShow();                   // Reseta os leds
   for (int i = 0; i < 30; i++) // Calibra a variavel media e value
-    ReadAll();
+    ReadAll();                 // Le os sensores
 
   while (true)
   {
     // Sempre();
-    Data = SerialReadLock();
+    Data = SerialRead(); // Fica esperando receber algum dado
 
     if (Data == 'M')
-    {                                // Recebendo um movimento executado pela engine no PC
-      for (int i = 0; i < 4; i++)    // Le 4 vezes
-        Rmove[i] = SerialReadLock(); // O movimento chegando
-
+    {                                              // Recebendo um movimento executado pela engine no PC
+      for (int i = 0; i < 4; i++)                  // Le 4 vezes
+        Rmove[i] = SerialRead();                   // O movimento chegando
+                                                   //
       sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97; // Converte do numero da casa para coordenadas do xadrex
       fCasa = (Rmove[3] - 49) * 8 + Rmove[2] - 97; // E salva em char
       corCasa(sCasa, 0, 255, 0);                   // Acende o led da casa
       corCasa(fCasa, 0, 255, 0);                   // Acende o led da casa
       LedShow();                                   // Grava a cor no led
-
-      gotMoved(); // Função para verificar se o movimento mandado pelo PC foi executado
-      getMove();  // Funcção para pegar um novo movimento
-
-      for (uint8_t i = 0; i < 4; i++) // Repete por 4 vezes
-        SerialWrite(Smove[i]);        // O envio dos 4 char usando Serial
+                                                   //
+      gotMoved();                                  // Função para verificar se o movimento requisitado pelo PC foi executado
+      getMove();                                   // Função para pegar um novo movimento
+                                                   //
+      for (uint8_t i = 0; i < 4; i++)              // Repete por 4 vezes
+        SerialWrite(Smove[i]);                     // O envio dos 4 char usando Serial
     }
     else if (Data == 'N')
-    {
-      for (int i = 0; i < 16; i++)
-        corCasa(i, 150, 0, 0);
-      for (int i = 48; i < 64; i++)
-        corCasa(i, 0, 0, 150);
-      for (int i = 64; i < 74; i++)
-        if (i < 69)
-          corCasa(i, 150, 0, 0);
-        else
-          corCasa(i, 0, 0, 150);
-      LedShow();
-
-      if (SerialReadLock() == 'w') // Caso o player seja brancas
-      {
-        pColor = true;
+    {                                   // Recebendo o comando de nova partida
+      for (int i = 0; i < 74; i++)      // Religando os leds
+        switch (i / 16)                 // Convertendo em conjuntos de 16 leds
+        {                               //
+        case 0:                         // Se for entre os leds 0 e 15
+          corCasa(i, 150, 0, 0);        // Liga eles vermelhos
+          break;                        //
+        case 3:                         // Se for entre o 48 e o 63
+          corCasa(i, 0, 0, 150);        // Liga azul
+          break;                        //
+        case 4:                         // Se for os leds de avaliação
+          if (i < 69)                   // Se for do lado branco
+            corCasa(i, 150, 0, 0);      // Liga vermelho
+          else                          // Senão é do lado preto
+            corCasa(i, 0, 0, 150);      // Laga azul
+          break;                        //
+        default:                        // Para os outros leds
+          corCasa(i, 0, 0, 0);          // São desligados
+          break;                        //
+        }                               //
+      LedShow();                        // Grava os leds
+                                        //
+      if (SerialRead() == 'w')          // Caso o player seja brancas
+      {                                 //
+        pColor = true;                  // Coloca na variavel para lembrar disso
         getMove();                      // Coleta o movimento
-        for (uint8_t i = 0; i < 4; i++) // Envia o movimento usando Serial
-          SerialWrite(Smove[i]);
-      }
-      else
-        pColor = false;
+        for (uint8_t i = 0; i < 4; i++) // Para os 4 bytes
+          SerialWrite(Smove[i]);        // Envia o movimento usando Serial
+      }                                 //
+      else                              // Se for preto
+        pColor = false;                 // Apenas coloca na variavel
     }
     else if (Data == 'E')
     {
       // Recebendo dados do serial
-      char sig = SerialReadLock();  // Recebe qual lado está melhor
-      char Eval[4];                 // Variavel para guardar as infos recebidas, sendo composto por 3 numeros e um ponto de decimal
-      for (int i = 0; i < 4; i++)   // Repete por 4 vezes
-        Eval[i] = SerialReadLock(); // Recebendo o numero da avaliação
-      eval = atoi(Eval);            // Converte os 4 chars em um numero - atoi presente na lib <stdlib.h>
-
+      char sig = SerialRead();    // Recebe qual lado está melhor
+      char Eval[4];               // Variavel para guardar as infos recebidas, sendo composto por 3 numeros e um ponto de decimal
+      for (int i = 0; i < 4; i++) // Repete por 4 vezes
+        Eval[i] = SerialRead();   // Recebendo o numero da avaliação
+      eval = atoi(Eval);          // Converte os 4 chars em um numero - atoi presente na lib <stdlib.h>
+//
       // Convertendo entre 0 e 10
       if (sig == '+')        // Se for positivo
         eval = 5 + eval / 2; // Soma os leds
