@@ -7,9 +7,8 @@
 #include <util/delay.h>
 
 // Valores para calibrar sensibilidade
-#define triggerValue 9     // Se a variação entre a media e a ultima leitura não passar desse valor, o sensor não é considerado ativo
+#define triggerValue 6      // Se a variação entre a media e a ultima leitura não passar desse valor, o sensor não é considerado ativo
 #define divisionValue 5.00 // Define de quantos valores a variavel media vai calcular o valor
-#define sumValue 0         // Valor empirico para fazer a calibragem mais rapida
 
 // Funções basicas
 #define NOP __asm__ __volatile__("nop\n\t") // Assembly nop
@@ -27,7 +26,8 @@ uint8_t receivePin[4] = {2, 3, 4, 5}; // Pinos que recebem o sinal
 unsigned long total;
 double media[64];
 char Rmove[4], Smove[4], Data = ' ';
-uint8_t sCasa, fCasa, Rselected, value[64], eval, Leds[222], MUX;
+uint8_t sCasa, fCasa, Rselected, eval, Leds[222], MUX;
+int value[64];
 bool pColor;
 
 // Funções para comunicação Serial
@@ -179,14 +179,14 @@ void ReadAll()
 void getMove()
 {
   // Pega o movimento e converte para enviar
-  uint8_t start;
   // Os numeros 49 e 97 utilizados adiante são devido a posição do numero '1' e da letra 'a' na tabela ASCII
   // E as multiplicações por 8 são devido as 8 casas por linha no tabuleiro
 
   while (Rselected == 100 || Rselected == fCasa)            // Espera até que seja lido uma casa
     ReadAll();                                              // Le os sensores
                                                             // Salva a cor do led antes do movimento
-  uint8_t startR, startG, startB;                           // Declara variaveis para salvar a cor ca casa escolhida
+  uint8_t start, startR, startG, startB;                    // Declara variaveis para salvar a cor ca casa escolhida
+  start = Rselected;                                        // Para evitar de uma peça ser movida para a casa que ja está
   if (start / 8 % 2)                                        // Se se for uma linha impar
   {                                                         //
     int AUX = (63 - start) * 3;                             // Conversão
@@ -206,7 +206,6 @@ void getMove()
   Smove[1] = Rselected / 8 + 49;                            // E salva em char
   corCasa(Rselected, 0, 255, 0);                            // Acende o led da casa
   LedShow();                                                // Grava a cor no led
-  start = Rselected;                                        // Para evitar de uma peça ser movida para a casa que ja está
                                                             //
   while (Rselected == start)                                // Verifica a retirada a peça do lugar
     ReadAll();                                              // Le os sensores
@@ -356,7 +355,7 @@ int main(void)
       for (int i = 0; i < 4; i++) // Repete por 4 vezes
         Eval[i] = SerialRead();   // Recebendo o numero da avaliação
       eval = atoi(Eval);          // Converte os 4 chars em um numero - atoi presente na lib <stdlib.h>
-//
+                                  //
       // Convertendo entre 0 e 10
       if (sig == '+')        // Se for positivo
         eval = 5 + eval / 2; // Soma os leds
