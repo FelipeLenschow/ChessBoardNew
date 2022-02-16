@@ -7,7 +7,7 @@
 #include <util/delay.h>
 
 // Valores para calibrar sensibilidade
-#define triggerValue 6      // Se a variação entre a media e a ultima leitura não passar desse valor, o sensor não é considerado ativo
+#define triggerValue 6     // Se a variação entre a media e a ultima leitura não passar desse valor, o sensor não é considerado ativo
 #define divisionValue 5.00 // Define de quantos valores a variavel media vai calcular o valor
 
 // Funções basicas
@@ -26,8 +26,8 @@ uint8_t receivePin[4] = {2, 3, 4, 5}; // Pinos que recebem o sinal
 unsigned long total;
 double media[64];
 char Rmove[4], Smove[4], Data = ' ';
-uint8_t sCasa, fCasa, Rselected, eval, Leds[222], MUX;
-int value[64];
+uint8_t sCasa, fCasa, Rselected, Leds[222], MUX;
+int value[64], eval;
 bool pColor;
 
 // Funções para comunicação Serial
@@ -38,7 +38,7 @@ void SerialBegin(unsigned long BAUD)
   UBRR0L = (unsigned char)ubrr0;              //
   UCSR0A = 0;                                 // Desabilitar velocidade dupla (no Arduino é habilitado por padrão)
   UCSR0B = (1 << RXEN0) | (1 << TXEN0);       // Habilita a transmissão e a recepção
-  UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);     // Dodo assíncrono, 8 bits de dados, 1 bit de parada, sem paridade
+  UCSR0C = (1 << UCSZ01) | (1 << UCSZ00);     // Modo assíncrono, 8 bits de dados, 1 bit de parada, sem paridade
 }
 void SerialWrite(unsigned char dado)
 {
@@ -202,7 +202,7 @@ void getMove()
     startB = Leds[AUX + 2];                                 //
   }                                                         //
                                                             //
-  Smove[0] = Rselected % 8 + 97;                            // Converte do numero da casa para coordenadas do xadrex
+  Smove[0] = Rselected % 8 + 97;                            // Converte do numero da casa para coordenadas do xadrez
   Smove[1] = Rselected / 8 + 49;                            // E salva em char
   corCasa(Rselected, 0, 255, 0);                            // Acende o led da casa
   LedShow();                                                // Grava a cor no led
@@ -212,7 +212,7 @@ void getMove()
                                                             //
   while (Rselected == 100)                                  // Espera até que seja lido uma casa
     ReadAll();                                              // Le os sensores
-  Smove[2] = Rselected % 8 + 97;                            // Converte do numero da casa para coordenadas do xadrex
+  Smove[2] = Rselected % 8 + 97;                            // Converte do numero da casa para coordenadas do xadrez
   Smove[3] = Rselected / 8 + 49;                            // E salva em char
   if (pColor)                                               // Se for brancas
     corCasa(Rselected, 150, 0, 0);                          // Acende a cor vermelha na nova casa da peça
@@ -236,7 +236,7 @@ void getMove()
 void gotMoved()
 {
 
-  sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97; // Converte coordenada do xadrex recebida usando Serial para Numero da casa
+  sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97; // Converte coordenada do xadrez recebida usando Serial para Numero da casa
   fCasa = (Rmove[3] - 49) * 8 + Rmove[2] - 97; // E salva numa variavel char
 
   // Confere se a casa recebida foi movida
@@ -302,7 +302,7 @@ int main(void)
       for (int i = 0; i < 4; i++)                  // Le 4 vezes
         Rmove[i] = SerialRead();                   // O movimento chegando
                                                    //
-      sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97; // Converte do numero da casa para coordenadas do xadrex
+      sCasa = (Rmove[1] - 49) * 8 + Rmove[0] - 97; // Converte do numero da casa para coordenadas do xadrez
       fCasa = (Rmove[3] - 49) * 8 + Rmove[2] - 97; // E salva em char
       corCasa(sCasa, 0, 255, 0);                   // Acende o led da casa
       corCasa(fCasa, 0, 255, 0);                   // Acende o led da casa
@@ -361,12 +361,6 @@ int main(void)
         eval = 5 + eval / 2; // Soma os leds
       else if (sig == '-')   // Se for negativo
         eval = 5 - eval / 2; // Subtrai os leds
-
-      // Limita o valor entre zero e dez, a quantidade de leds disponiveis para isso
-      if (eval < 0)  // Se menor que zero
-        eval = 0;    // Faz igual a zero
-      if (eval > 10) // Se maior que dez
-        eval = 10;   // Faz igual a dez
 
       // Ligando os Leds com a cor correspondente da avaliação
       for (int i = 0; i < 10; i++)    // Repete para os dez leds de avaliação
